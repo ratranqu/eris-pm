@@ -84,29 +84,29 @@ func cliClient(c *cli.Context) {
 	var err error
 	lang := c.String("language")
 	if lang == "" {
-		lang, err = lllcserver.LangFromFile(tocompile)
+		lang, err = compilers.LangFromFile(tocompile)
 		ifExit(err)
 	}
 
 	host := c.String("host")
 	if host != "" {
 		url := host + "/" + "compile"
-		lllcserver.SetLanguageURL(lang, url)
+		compilers.SetLanguageURL(lang, url)
 	}
-	logger.Debugln("language config:", lllcserver.Languages[lang])
+	logger.Debugln("language config:", compilers.Languages[lang])
 
-	common.InitDataDir(lllcserver.ClientCache)
+	common.InitDataDir(compilers.ClientCache)
 	logger.Infoln("compiling", tocompile)
 	if c.Bool("local") {
-		lllcserver.SetLanguageNet(lang, false)
-		//b, err := lllcserver.CompileWrapper(tocompile, lang)
+		compilers.SetLanguageNet(lang, false)
+		//b, err := compilers.CompileWrapper(tocompile, lang)
 		// force it through the compile pipeline so we get caching
-		b, abi, err := lllcserver.Compile(tocompile)
+		b, abi, err := compilers.Compile(tocompile)
 		ifExit(err)
 		logger.Infoln("bytecode:", hex.EncodeToString(b))
 		logger.Infoln("abi:", abi)
 	} else {
-		code, abi, err := lllcserver.Compile(tocompile)
+		code, abi, err := compilers.Compile(tocompile)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -117,12 +117,12 @@ func cliClient(c *cli.Context) {
 
 func cliProxy(c *cli.Context) {
 	addr := "localhost:" + strconv.Itoa(c.Int("port"))
-	lllcserver.StartProxy(addr)
+	compilers.StartProxy(addr)
 }
 
 func cliServer(c *cli.Context) {
 
-	common.InitDataDir(lllcserver.ServerCache)
+	common.InitDataDir(compilers.ServerCache)
 	addrUnsecure := ""
 	addrSecure := ""
 
@@ -155,7 +155,7 @@ func cliServer(c *cli.Context) {
 
 	}
 
-	lllcserver.StartServer(addrUnsecure, addrSecure, key, cert)
+	compilers.StartServer(addrUnsecure, addrSecure, key, cert)
 }
 
 // so we can catch panics

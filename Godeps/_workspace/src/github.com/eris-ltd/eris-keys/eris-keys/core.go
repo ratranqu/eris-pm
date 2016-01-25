@@ -16,6 +16,8 @@ import (
 	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/eris-ltd/eris-keys/crypto"
 
 	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/code.google.com/p/go.crypto/ripemd160"
+	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/tendermint/tendermint/account"
+	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/tendermint/tendermint/wire"
 )
 
 var ErrLocked = fmt.Errorf("account is locked")
@@ -236,6 +238,45 @@ func corePub(addr string) ([]byte, error) {
 		return nil, fmt.Errorf("error retrieving pub key for %x: %v", addrB, err)
 	}
 	return pub, nil
+}
+
+func coreConvert(addr string) ([]byte, error) {
+	type privValidator struct {
+		Address    []byte                 `json:"address"`
+		PubKey     account.PubKeyEd25519  `json:"pub_key"`
+		PrivKey    account.PrivKeyEd25519 `json:"priv_key"`
+		LastHeight int                    `json:"last_height"`
+		LastRound  int                    `json:"last_round"`
+		LastStep   int                    `json:"last_step"`
+	}
+
+	addrB, err := hex.DecodeString(addr)
+	if err != nil {
+		return nil, fmt.Errorf("addr is invalid hex: %s", err.Error())
+	}
+	key, err := GetKey(addrB)
+	if err != nil {
+		return nil, err
+	}
+
+	pub, err := key.Pubkey()
+	if err != nil {
+		return nil, err
+	}
+
+	var pubKey account.PubKeyEd25519
+	copy(pubKey[:], pub)
+
+	var privKey account.PrivKeyEd25519
+	copy(privKey[:], key.PrivateKey)
+
+	privVal := &privValidator{
+		Address: []byte(addr),
+		PubKey:  pubKey,
+		PrivKey: privKey,
+	}
+
+	return wire.JSONBytes(privVal), nil
 }
 
 func coreUnlock(auth, addr, timeout string) error {

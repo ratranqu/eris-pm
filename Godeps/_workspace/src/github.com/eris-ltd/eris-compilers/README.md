@@ -5,12 +5,12 @@
 eris-compilers
 ===========
 
-The Lovely Little Language Compiler: A web server and client for compiling ethereum languages.
+The Lovely Little Language Compiler: A web server and client for compiling smart contract languages.
 
 # Features
 
 - language agnostic (currently supports lll, serpent2.0, solidity)
-- returns ethereum abis (for serpent and solidity)
+- returns smart contract abis (for serpent and solidity)
 - handles included files recursively with regex matching
 - client side and server side caching
 - configuration file with per-language options
@@ -18,7 +18,7 @@ The Lovely Little Language Compiler: A web server and client for compiling ether
 - easily extensible to new languages
 
 Eris Industries' own public facing LLLC-server (at https://compilers.eris.industries) is hardcoded into the source,
-so you can start compiling ethereum language right out of the box with no extra tools required.
+so you can start compiling smart contract language right out of the box with no extra tools required.
 
 If you want to use your own server, or default to compiling locally, or otherwise adjust configuration settings,
 see the config file at `~/.eris/languages/config.json`.
@@ -28,14 +28,14 @@ see the config file at `~/.eris/languages/config.json`.
 ## Using the Golang API
 
 ```
-bytecode, err := lllcserver.Compile("mycontract.lll")
+bytecode, err := compilers.Compile("mycontract.lll")
 ```
 
 The language is determined automatically from extension. If you want to compile literal expressions,
 you must specify the language explicitly, ie.
 
 ```
-bytecode, err := lllcserver.CompileLiteral("[0x5](+ 4 @0x3)", "lll")
+bytecode, err := compilers.CompileLiteral("[0x5](+ 4 @0x3)", "lll")
 ```
 
 ## Using the CLI

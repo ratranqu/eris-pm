@@ -35,6 +35,7 @@ func StartServer(host, port string) error {
 	mux.HandleFunc("/name/rm", nameRmHandler)
 	mux.HandleFunc("/unlock", unlockHandler)
 	mux.HandleFunc("/lock", lockHandler)
+	mux.HandleFunc("/mint", convertMintHandler)
 
 	logger.Infof("Starting eris-keys server on %s:%s\n", host, port)
 	c := cors.New(cors.Options{
@@ -107,6 +108,26 @@ func unlockHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteResult(w, fmt.Sprintf("%s unlocked", addr))
+}
+
+func convertMintHandler(w http.ResponseWriter, r *http.Request) {
+	_, _, args, err := typeAuthArgs(r)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	addr, name := args["addr"], args["name"]
+	addr, err = getNameAddr(name, addr)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	key, err := coreConvert(addr)
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+	WriteResult(w, string(key))
 }
 
 func lockHandler(w http.ResponseWriter, r *http.Request) {

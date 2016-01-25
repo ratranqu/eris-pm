@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/Sirupsen/logrus"
-	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/gopkg.in/gemnasium/logrus-airbrake-hook.v2"
+	"gopkg.in/gemnasium/logrus-airbrake-hook.v2"
 )
 
 var log = logrus.New()

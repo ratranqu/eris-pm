@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	"github.com/eris-ltd/eris-pm/definitions"
-	"github.com/eris-ltd/eris-pm/logger"
+	//"github.com/eris-ltd/eris-pm/logger"
 	"github.com/eris-ltd/eris-pm/packages"
 	"github.com/eris-ltd/eris-pm/util"
 	"github.com/eris-ltd/eris-pm/version"
+
+	logger "github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/eris-ltd/common/go/log"
 
 	log "github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	. "github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/eris-ltd/common/go/common"

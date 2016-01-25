@@ -36,12 +36,12 @@ var (
 
 	/* flag vars */
 	//global
-	LogLevelCli int
-	KeysDir     string
-	KeyName     string
-	KeyAddr     string
-	KeyHost     string
-	KeyPort     string
+	logLevel int
+	KeysDir  string
+	KeyName  string
+	KeyAddr  string
+	KeyHost  string
+	KeyPort  string
 
 	//keygenCmd only
 	NoPassword bool
@@ -63,13 +63,13 @@ var EKeys = &cobra.Command{
 }
 
 func Execute() {
-	buildKeysCommand()
+	BuildKeysCommand()
 	EKeys.PersistentPreRun = before
 	EKeys.PersistentPostRun = after
 	EKeys.Execute()
 }
 
-func buildKeysCommand() {
+func BuildKeysCommand() {
 	nameCmd.AddCommand(nameRmCmd, nameLsCmd)
 
 	EKeys.AddCommand(keygenCmd)
@@ -82,6 +82,7 @@ func buildKeysCommand() {
 	EKeys.AddCommand(hashCmd)
 	EKeys.AddCommand(serverCmd)
 	EKeys.AddCommand(importCmd)
+	EKeys.AddCommand(convertCmd)
 	addKeysFlags()
 }
 
@@ -147,6 +148,14 @@ var verifyCmd = &cobra.Command{
 	Long:  "eris-keys verify --addr <addr> <hash> <sig>",
 	Run:   cliVerify,
 }
+
+var convertCmd = &cobra.Command{
+	Use:   "convert",
+	Short: "eris-keys convert --addr <address>",
+	Long:  "eris-keys convert --addr <address>",
+	Run:   cliConvert,
+}
+
 var hashCmd = &cobra.Command{
 	Use:   "hash",
 	Short: "eris-keys hash <some data>",
@@ -167,7 +176,7 @@ var importCmd = &cobra.Command{
 }
 
 func addKeysFlags() {
-	EKeys.PersistentFlags().IntVarP(&LogLevelCli, "log", "l", 0, "specify the location of the directory containing key files")
+	EKeys.PersistentFlags().IntVarP(&logLevel, "log", "l", 0, "specify the location of the directory containing key files")
 	EKeys.PersistentFlags().StringVarP(&KeysDir, "dir", "", DefaultDir, "specify the location of the directory containing key files")
 	EKeys.PersistentFlags().StringVarP(&KeyName, "name", "", "", "name of key to use")
 	EKeys.PersistentFlags().StringVarP(&KeyAddr, "addr", "", "", "address of key to use")
@@ -199,23 +208,23 @@ func checkMakeDataDir(dir string) error {
 }
 
 func before(cmd *cobra.Command, args []string) {
-	var logger log.LogLevel
-	switch LogLevelCli {
+	var l log.LogLevel
+	// ugly hack. TODO: fix (csk)
+	switch logLevel {
 	case 0:
-		logger = 0
+		l = 0
 	case 1:
-		logger = 1
+		l = 1
 	case 2:
-		logger = 2
+		l = 2
 	case 3:
-		logger = 3
+		l = 3
 	case 4:
-		logger = 4
+		l = 4
 	case 5:
-		logger = 5
+		l = 5
 	}
-
-	log.SetLoggers(logger, os.Stdout, os.Stderr)
+	log.SetLoggers(l, os.Stdout, os.Stderr)
 
 	DaemonAddr = fmt.Sprintf("http://%s:%s", KeyHost, KeyPort)
 }

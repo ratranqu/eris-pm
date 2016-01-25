@@ -43,6 +43,15 @@ func cliLock(cmd *cobra.Command, args []string) {
 	logger.Println(r)
 }
 
+func cliConvert(cmd *cobra.Command, args []string) {
+	r, err := Call("mint", map[string]string{"addr": KeyAddr, "name": KeyName})
+	if _, ok := err.(ErrConnectionRefused); ok {
+		ExitConnectErr(err)
+	}
+	IfExit(err)
+	logger.Println(r)
+}
+
 func cliUnlock(cmd *cobra.Command, args []string) {
 	auth := hiddenAuth()
 	r, err := Call("unlock", map[string]string{"auth": auth, "addr": KeyAddr, "name": KeyName})
