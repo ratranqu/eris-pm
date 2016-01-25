@@ -45,11 +45,11 @@
 		},
 		{
 			"ImportPath": "github.com/eris-ltd/common/go/common",
-			"Rev": "ed8359ce67059fd3f312ef572debc140bcfe2358"
+			"Rev": "bb934ce0ec40ef1e9719be3047747ac726f0d259"
 		},
 		{
 			"ImportPath": "github.com/eris-ltd/common/go/log",
-			"Rev": "ed8359ce67059fd3f312ef572debc140bcfe2358"
+			"Rev": "bb934ce0ec40ef1e9719be3047747ac726f0d259"
 		},
 		{
 			"ImportPath": "github.com/eris-ltd/eris-abi/abi",
