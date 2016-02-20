@@ -130,6 +130,12 @@ type Deploy struct {
 	// relative to the contracts path established via the --contracts-path flag or the $EPM_CONTRACTS_PATH
 	// environment variable
 	Contract string `mapstructure:"contract" json:"contract" yaml:"contract" toml:"contract"`
+	// (Optional) the name of contract to instantiate (it has to be one of the contracts present)
+	// in the file defined in Contract above.
+	// When none is provided, the system will choose the contract with the same name as that file.
+	Instance string `mapstructure:"instance" json:"instance" yaml:"instance" toml:"instance"`
+	// (Optional) list of Name:Address separated by spaces of libraries (see solc --help)
+	Libraries string `mapstructure:"libraries" json:"libraries" yaml:"libraries" toml:"libraries"`
 	// (Optional) TODO: additional arguments to send along with the contract code
 	Data string `mapstructure:"data" json:"data" yaml:"data" toml:"data"`
 	// (Optional) amount of tokens to send to the contract which will (after deployment) reside in the

@@ -3,12 +3,13 @@ package perform
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/eris-ltd/eris-pm/definitions"
-	"github.com/eris-ltd/eris-pm/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/eris-ltd/eris-pm/definitions"
+	"github.com/eris-ltd/eris-pm/util"
 
 	log "github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/Sirupsen/logrus"
 	"github.com/eris-ltd/eris-pm/Godeps/_workspace/src/github.com/eris-ltd/common/go/common"
@@ -24,17 +25,22 @@ func PackageDeployJob(pkgDeploy *definitions.PackageDeploy, do *definitions.Do) 
 	return result, nil
 }
 
-func DeployJob(deploy *definitions.Deploy, do *definitions.Do) (string, error) {
+func DeployJob(deploy *definitions.Deploy, do *definitions.Do) (result string, err error) {
 	// Preprocess variables
 	deploy.Source, _ = util.PreProcess(deploy.Source, do)
 	deploy.Contract, _ = util.PreProcess(deploy.Contract, do)
+	deploy.Instance, _ = util.PreProcess(deploy.Instance, do)
+	deploy.Libraries, _ = util.PreProcess(deploy.Libraries, do)
 	deploy.Amount, _ = util.PreProcess(deploy.Amount, do)
 	deploy.Nonce, _ = util.PreProcess(deploy.Nonce, do)
 	deploy.Fee, _ = util.PreProcess(deploy.Fee, do)
 	deploy.Gas, _ = util.PreProcess(deploy.Gas, do)
 
+	// trim the extension
+	contractName := strings.TrimSuffix(deploy.Contract, filepath.Ext(deploy.Contract))
 	// Use default
 	deploy.Source = useDefault(deploy.Source, do.Package.Account)
+	deploy.Instance = useDefault(deploy.Instance, contractName)
 	deploy.Amount = useDefault(deploy.Amount, do.DefaultAmount)
 	deploy.Fee = useDefault(deploy.Fee, do.DefaultFee)
 	deploy.Gas = useDefault(deploy.Gas, do.DefaultGas)
@@ -57,12 +63,11 @@ func DeployJob(deploy *definitions.Deploy, do *definitions.Do) (string, error) {
 	}
 
 	// compile
-	bytecode, abiSpec, err := compilers.Compile(p)
-	if err != nil {
-		return "", err
+	resp := compilers.Compile(p, deploy.Libraries)
+
+	if resp.Error != "" {
+		return "", fmt.Errorf(resp.Error)
 	}
-	log.WithField("=>", string(abiSpec)).Debug("Abi spec")
-	contractCode := hex.EncodeToString(bytecode)
 
 	// Don't use pubKey if account override
 	var oldKey string
@@ -71,45 +76,64 @@ func DeployJob(deploy *definitions.Deploy, do *definitions.Do) (string, error) {
 		do.PublicKey = ""
 	}
 
-	// additional data may be sent along with the contract
-	// these are naively added to the end of the contract code using standard
-	// mint packing
-	if deploy.Data != "" {
-		splitout := strings.Split(deploy.Data, " ")
-		for _, s := range splitout {
-			s, _ = util.PreProcess(s, do)
-			addOns := common.LeftPadString(common.StripHex(common.Coerce2Hex(s)), 64)
-			log.WithField("=>", contractCode).Debug("Contract Code")
-			log.WithField("=>", addOns).Debug("Additional Data")
-			contractCode = contractCode + addOns
+	//fmt.Println(resp)
+	for _, r := range resp.Objects {
+		log.WithField("=>", string(r.ABI)).Debug("Abi spec")
+		if r.Bytecode == nil {
+			continue
 		}
-	}
+		contractCode := hex.EncodeToString(r.Bytecode)
 
-	// Deploy contract
-	log.WithFields(log.Fields{
-		"source": deploy.Source,
-		"code":   contractCode,
-	}).Info("Deploying Contract")
+		// additional data may be sent along with the contract
+		// these are naively added to the end of the contract code using standard
+		// mint packing
+		if deploy.Data != "" {
+			splitout := strings.Split(deploy.Data, " ")
+			for _, s := range splitout {
+				s, _ = util.PreProcess(s, do)
+				addOns := common.LeftPadString(common.StripHex(common.Coerce2Hex(s)), 64)
+				log.WithField("=>", contractCode).Debug("Contract Code")
+				log.WithField("=>", addOns).Debug("Additional Data")
+				contractCode = contractCode + addOns
+			}
+		}
+		// Save ABI
+		if _, err := os.Stat(do.ABIPath); os.IsNotExist(err) {
+			if err := os.Mkdir(do.ABIPath, 0775); err != nil {
+				return "", err
+			}
+		}
 
-	tx, err := core.Call(do.Chain, do.Signer, do.PublicKey, deploy.Source, "", deploy.Amount, deploy.Nonce, deploy.Gas, deploy.Fee, contractCode)
-	if err != nil {
-		return "", fmt.Errorf("Error deploying contract %s: %v", p, err)
-	}
-
-	// Sign, broadcast, display
-	var result string
-	result, err = deployFinalize(do, tx, deploy.Wait)
-
-	// Save ABI
-	if _, err := os.Stat(do.ABIPath); os.IsNotExist(err) {
-		if err := os.Mkdir(do.ABIPath, 0775); err != nil {
+		// saving contract/library abi
+		abiLocation := filepath.Join(do.ABIPath, r.Objectname)
+		log.WithField("=>", abiLocation).Debug("Saving ABI")
+		if err := ioutil.WriteFile(abiLocation, []byte(r.ABI), 0664); err != nil {
 			return "", err
 		}
-	}
-	abiLocation := filepath.Join(do.ABIPath, result)
-	log.WithField("=>", abiLocation).Debug("Saving ABI")
-	if err := ioutil.WriteFile(abiLocation, []byte(abiSpec), 0664); err != nil {
-		return "", err
+
+		if strings.ToLower(r.Objectname) == strings.ToLower(deploy.Instance) {
+			// Deploy contract
+			log.WithFields(log.Fields{
+				"source": deploy.Source,
+				"code":   contractCode,
+			}).Info("Deploying Contract")
+
+			tx, err := core.Call(do.Chain, do.Signer, do.PublicKey, deploy.Source, "", deploy.Amount, deploy.Nonce, deploy.Gas, deploy.Fee, contractCode)
+			if err != nil {
+				return "", fmt.Errorf("Error deploying contract %s: %v", p, err)
+			}
+
+			// Sign, broadcast, display
+			result, err = deployFinalize(do, tx, deploy.Wait)
+
+			// saving contract/library abi at abi/address
+			abiLocation := filepath.Join(do.ABIPath, result)
+			log.WithField("=>", abiLocation).Debug("Saving ABI")
+			if err := ioutil.WriteFile(abiLocation, []byte(r.ABI), 0664); err != nil {
+				return "", err
+			}
+		}
+
 	}
 
 	// Don't use pubKey if account override

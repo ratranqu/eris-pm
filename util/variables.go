@@ -12,28 +12,40 @@ import (
 
 func PreProcess(toProcess string, do *definitions.Do) (string, error) {
 	// $block.... $account.... etc. should be caught. hell$$o should not
-	catchEr := regexp.MustCompile("^\\$(.*)$")
+	// :$libAddr needs to be caught
+	catchEr := regexp.MustCompile("(^|\\s|:)\\$([a-zA-Z0-9_]+)")
 
 	// If there's a match then run through the replacement process
 	if catchEr.MatchString(toProcess) {
 		// find what we need to catch.
-		jobName := catchEr.FindStringSubmatch(toProcess)[1]
 
-		// first parse the reserved words.
-		if strings.Contains(jobName, "block") {
-			return replaceBlockVariable(jobName, do)
-		}
+		processedString := toProcess
+		for _, jobMatch := range catchEr.FindAllStringSubmatch(toProcess, -1) {
+			jobName := jobMatch[2]
+			varName := "$" + jobName
 
-		// second we loop through the jobNames to do a result replace
-		for _, job := range do.Package.Jobs {
-			if string(jobName) == job.JobName {
-				log.WithFields(log.Fields{
-					"jobname": string(jobName),
-					"result":  job.JobResult,
-				}).Debug("Fixing Variables =>")
-				return job.JobResult, nil
+			// first parse the reserved words.
+			if strings.Contains(jobName, "block") {
+
+				block, err := replaceBlockVariable(jobName, do)
+				if err != nil {
+					return "", err
+				}
+				strings.Replace(processedString, varName, block, 1)
+			}
+
+			// second we loop through the jobNames to do a result replace
+			for _, job := range do.Package.Jobs {
+				if string(jobName) == job.JobName {
+					log.WithFields(log.Fields{
+						"jobname": string(jobName),
+						"result":  job.JobResult,
+					}).Debug("Fixing Variables =>")
+					processedString = strings.Replace(processedString, varName, job.JobResult, 1)
+				}
 			}
 		}
+		return processedString, nil
 	}
 
 	// if no matches, return original
